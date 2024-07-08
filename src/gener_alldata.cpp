@@ -32,7 +32,7 @@ int main(int argc, char** argv)
         }
 	
         // create imu data && add imu noise
-        MotionData data = imuGen.MotionModel(0);
+        MotionData data = imuGen.MotionModel(t);
         MotionData data_noise = data;
         imuGen.addIMUnoise(data_noise);
         // to Quaterniond
