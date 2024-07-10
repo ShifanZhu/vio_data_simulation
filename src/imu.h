@@ -7,6 +7,8 @@
 
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Geometry>
+#include <sophus/se3.hpp>
+#include <sophus/so3.hpp>
 #include <iostream>
 #include <vector>
 
@@ -44,7 +46,10 @@ public:
     Eigen::Vector3d init_twb_;
     Eigen::Matrix3d init_Rwb_;
 
-    MotionData MotionModel(double t);
+    using SO3 = Sophus::SO3<double>; // 旋转变量类型
+
+    MotionData MotionModel(double t, double time_offset);
+    MotionData StaticMotionModel(double t, double time_offset);
 
     void addIMUnoise(MotionData& data);
     void testImu(std::string src, std::string dist);        // imu数据进行积分，用来看imu轨迹

@@ -18,6 +18,26 @@ void save_points(std::string filename, std::vector<Eigen::Vector4d, Eigen::align
                    <<p(3)<<std::endl;
     }
 }
+
+void save_points_with_time(std::string filename, std::vector<Vector5d, Eigen::aligned_allocator<Vector5d>> points)
+{
+    std::ofstream save_points;
+    save_points.open(filename.c_str(), std::ios::app);
+
+    save_points << "FEAT " << points[0](0) << " ";
+    for (int i = 0; i < points.size(); ++i)
+    {
+        Vector5d p = points[i];
+
+        save_points << p(1) << " "
+                    << p(2) << " "
+                    << p(3) << " "
+                    << p(4) << " ";
+    }
+    save_points << std::endl;
+    save_points.close();
+}
+
 void save_features(std::string filename,
                    std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > points,
                    std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > features)
@@ -123,21 +143,51 @@ void save_Pose(std::string filename, std::vector<MotionData> pose)
         Eigen::Vector3d gyro = data.imu_gyro;
         Eigen::Vector3d acc = data.imu_acc;
 
-        save_points<<time<<" "
-                   <<q.w()<<" "
-                   <<q.x()<<" "
-                   <<q.y()<<" "
-                   <<q.z()<<" "
-                   <<t(0)<<" "
-                   <<t(1)<<" "
-                   <<t(2)<<" "
-                   <<gyro(0)<<" "
-                   <<gyro(1)<<" "
-                   <<gyro(2)<<" "
-                   <<acc(0)<<" "
-                   <<acc(1)<<" "
-                   <<acc(2)<<" "
-                   <<std::endl;
+        save_points << std::setprecision(5) 
+                    << time << " "
+                    << std::setprecision(10)
+                    << q.w() << " "
+                    << q.x() << " "
+                    << q.y() << " "
+                    << q.z() << " "
+                    << t(0) << " "
+                    << t(1) << " "
+                    << t(2) << " "
+                    << gyro(0) << " "
+                    << gyro(1) << " "
+                    << gyro(2) << " "
+                    << acc(0) << " "
+                    << acc(1) << " "
+                    << acc(2) << " "
+                    << std::endl;
+    }
+}
+
+void save_Pose_for_SAD(std::string filename, std::vector<MotionData> pose)
+{
+    std::ofstream save_points;
+    save_points.open(filename.c_str());
+
+    for (int i = 0; i < pose.size(); ++i)
+    {
+        MotionData data = pose[i];
+        double time = data.timestamp;
+        Eigen::Quaterniond q(data.Rwb);
+        Eigen::Vector3d t = data.twb;
+        Eigen::Vector3d gyro = data.imu_gyro;
+        Eigen::Vector3d acc = data.imu_acc;
+
+        save_points <<"IMU "
+                    << std::setprecision(5)
+                    << time << " "
+                    << std::setprecision(10)
+                    << gyro(0) << " "
+                    << gyro(1) << " "
+                    << gyro(2) << " "
+                    << acc(0) << " "
+                    << acc(1) << " "
+                    << acc(2) << " "
+                    << std::endl;
     }
 }
 
@@ -157,7 +207,7 @@ void save_Pose_asTUM(std::string filename, std::vector<MotionData> pose)
 
         save_points.precision(9);
         save_points <<time<<" ";
-        save_points.precision(5);
+        save_points.precision(10);
         save_points <<t(0)<<" "
                     <<t(1)<<" "
                     <<t(2)<<" "

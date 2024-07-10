@@ -58,7 +58,7 @@ ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 rpy = []
 t = []
-for i in range(0,400,5):
+for i in range(0,200,5):
     ax.clear()    
     ax.scatter(x, y, z,c='g')
     
@@ -83,7 +83,7 @@ for i in range(0,400,5):
             
             ax.plot( [ numbers_float[0],   p[0]  ] , [ numbers_float[1], p[1] ] , zs=[ numbers_float[2], p[2] ] )
 
-    s = filepath + '/house_model/house.txt'
+    s = filepath + '/../models/house_model/house.txt'
     with open(s, 'r') as f:
         data = f.readlines()  # txt中所有字符串读入data
         for line in data:
@@ -101,4 +101,6 @@ for i in range(0,400,5):
     ax.legend()
     plt.show() 
     plt.pause(0.01)
+    if i >= 190:
+        plt.pause(0)
     

@@ -11,10 +11,13 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <iomanip>
+
+typedef Eigen::Matrix<double, 5, 1> Vector5d;
 
 // save 3d points to file
 void save_points(std::string filename, std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > points);
-
+void save_points_with_time(std::string filename, std::vector<Vector5d, Eigen::aligned_allocator<Vector5d>> points);
 // save 3d points and it's obs in image
 void save_features(std::string filename,
                    std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > points,
@@ -29,6 +32,7 @@ void LoadPose(std::string filename, std::vector<MotionData>& pose);
 
 // save imu body data
 void save_Pose(std::string filename, std::vector<MotionData> pose);
+void save_Pose_for_SAD(std::string filename, std::vector<MotionData> pose);
 
 // save pose as TUM style
 void save_Pose_asTUM(std::string filename, std::vector<MotionData> pose);

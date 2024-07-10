@@ -15,7 +15,7 @@ using Lines = std::vector<Line, Eigen::aligned_allocator<Line> >;
 void CreatePointsLines(Points& points, Lines& lines)
 {
     std::ifstream f;
-    f.open("house_model/house.txt");
+    f.open("../models/house_model/house.txt");
 
     while(!f.eof())
     {
@@ -63,12 +63,12 @@ void CreatePointsLines(Points& points, Lines& lines)
         }
     }
 
-    // create more 3d points, you can comment this code
-    int n = points.size();
-    for (int j = 0; j < n; ++j) {
-        Eigen::Vector4d p = points[j] + Eigen::Vector4d(0.5,0.5,-0.5,0);
-        points.push_back(p);
-    }
+    // // create more 3d points, you can comment this code
+    // int n = points.size();
+    // for (int j = 0; j < n; ++j) {
+    //     Eigen::Vector4d p = points[j] + Eigen::Vector4d(0.05,0.05,-0.05,0);
+    //     points.push_back(p);
+    // }
 
     // save points
     save_points("all_points.txt", points);
@@ -107,8 +107,24 @@ int main(){
     // imu pose gyro acc
     std::vector< MotionData > imudata;
     std::vector< MotionData > imudata_noise;
-    for (float t = params.t_start; t<params.t_end;) {
-        MotionData data = imuGen.MotionModel(t);
+
+    // static motion
+    for (float t = params.t_start; t<params.t_start + params.t_static-1e-5;) {
+        MotionData data = imuGen.StaticMotionModel(t, 0);
+        imudata.push_back(data);
+
+        // add imu noise
+        MotionData data_noise = data;
+        imuGen.addIMUnoise(data_noise);
+        imudata_noise.push_back(data_noise);
+
+        t += 1.0/params.imu_frequency;
+    }
+
+    // specific motion
+    for (float t = params.t_start; t < params.t_end;)
+    {
+        MotionData data = imuGen.MotionModel(t, params.t_static);
         imudata.push_back(data);
 
         // add imu noise
@@ -123,15 +139,30 @@ int main(){
     imuGen.init_Rwb_ = imudata.at(0).Rwb;
     save_Pose("imu_pose.txt", imudata);
     save_Pose("imu_pose_noise.txt", imudata_noise);
+    save_Pose_for_SAD("imu_data_sad.txt", imudata);
+    save_Pose_for_SAD("imu_data_sad_noise.txt", imudata_noise);
 
-    imuGen.testImu("imu_pose.txt", "imu_int_pose.txt");     // test the imu data, integrate the imu data to generate the imu trajecotry
+    imuGen.testImu("imu_pose.txt", "imu_int_pose.txt"); // test the imu data, integrate the imu data to generate the imu trajecotry
     imuGen.testImu("imu_pose_noise.txt", "imu_int_pose_noise.txt");
 
     // cam pose
     std::vector< MotionData > camdata;
+
+    for (float t = params.t_start; t<params.t_start + params.t_static-1e-5;) {
+
+        MotionData imu = imuGen.StaticMotionModel(t, 0); // imu body frame to world frame motion
+        MotionData cam;
+
+        cam.timestamp = imu.timestamp;
+        cam.Rwb = imu.Rwb * params.R_bc;           // cam frame in world frame
+        cam.twb = imu.twb + imu.Rwb * params.t_bc; //  Tcw = Twb * Tbc ,  t = Rwb * tbc + twb
+
+        camdata.push_back(cam);
+        t += 1.0 / params.cam_frequency;
+    }
     for (float t = params.t_start; t<params.t_end;) {
 
-        MotionData imu = imuGen.MotionModel(t);   // imu body frame to world frame motion
+        MotionData imu = imuGen.MotionModel(t, params.t_static);   // imu body frame to world frame motion
         MotionData cam;
 
         cam.timestamp = imu.timestamp;
@@ -144,6 +175,7 @@ int main(){
     save_Pose("cam_pose.txt",camdata);
     save_Pose_asTUM("cam_pose_tum.txt",camdata);
 
+    double t(0);
     // points obs in image
     for(int n = 0; n < camdata.size(); ++n)
     {
@@ -153,21 +185,23 @@ int main(){
         Twc.block(0, 3, 3, 1) = data.twb;
 
         // 遍历所有的特征点，看哪些特征点在视野里
-        std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > points_cam;    // ３维点在当前cam视野里
+        std::vector<Vector5d, Eigen::aligned_allocator<Vector5d>> stamped_points_cam;     // ３维点在当前cam视野里
+        std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d>> points_cam;     // ３维点在当前cam视野里
         std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > features_cam;  // 对应的２维图像坐标
         for (int i = 0; i < points.size(); ++i) {
             Eigen::Vector4d pw = points[i];          // 最后一位存着feature id
             pw[3] = 1;                               //改成齐次坐标最后一位
             Eigen::Vector4d pc1 = Twc.inverse() * pw; // T_wc.inverse() * Pw  -- > point in cam frame
 
-            if(pc1(2) < 0) continue; // z必须大于０,在摄像机坐标系前方
+            // if(pc1(2) < 0) continue; // z必须大于０,在摄像机坐标系前方
 
-            Eigen::Vector2d obs(pc1(0)/pc1(2), pc1(1)/pc1(2)) ;
+            Eigen::Vector2d obs(pc1(0)/pc1(2), pc1(1)/pc1(2));
             // if( (obs(0)*460 + 255) < params.image_h && ( obs(0) * 460 + 255) > 0 &&
                    // (obs(1)*460 + 255) > 0 && ( obs(1)* 460 + 255) < params.image_w )
             {
-                points_cam.push_back(points[i]);
-                features_cam.push_back(obs);
+                points_cam.push_back(points[i]); // points in world frame
+                features_cam.push_back(obs); // points in camera frame (normalized plane)
+                stamped_points_cam.push_back(Vector5d(t, i, pc1(0), pc1(1), pc1(2)));
             }
         }
 
@@ -175,6 +209,8 @@ int main(){
         std::stringstream filename1;
         filename1<<"keyframe/all_points_"<<n<<".txt";
         save_features(filename1.str(),points_cam,features_cam);
+        save_points_with_time("feature_points.txt", stamped_points_cam);
+        t += 1.0/params.cam_frequency;
     }
 
     // lines obs in image

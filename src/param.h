@@ -14,10 +14,11 @@ public:
     Param();
 
     // time
-    int imu_frequency = 200;
+    int imu_frequency = 2000;
     int cam_frequency = 30;
     double imu_timestep = 1./imu_frequency;
     double cam_timestep = 1./cam_frequency;
+    double t_static = 3.;
     double t_start = 0.;
     double t_end = 20;  //  20 s
 

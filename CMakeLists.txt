@@ -16,6 +16,7 @@ SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake_modules/
 find_package(Eigen3 REQUIRED)
 FIND_PACKAGE(OpenCV REQUIRED)
 FIND_PACKAGE(Sophus REQUIRED)
+find_package(fmt REQUIRED)
 
 include_directories(
 ${EIGEN3_INCLUDE_DIR}
@@ -29,5 +30,5 @@ ${Sophus_LIBRARIES}
 )
 
 ADD_EXECUTABLE(data_gen main/gener_alldata.cpp src/param.h src/param.cpp src/utilities.h src/utilities.cpp src/imu.h src/imu.cpp)
-TARGET_LINK_LIBRARIES (data_gen ${LINK_LIBS})
+TARGET_LINK_LIBRARIES (data_gen ${LINK_LIBS} fmt::fmt)
 
