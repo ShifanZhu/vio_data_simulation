@@ -24,7 +24,7 @@ void save_points_with_time(std::string filename, std::vector<Vector5d, Eigen::al
     std::ofstream save_points;
     save_points.open(filename.c_str(), std::ios::app);
 
-    save_points << "FEAT " << points[0](0) << " ";
+    save_points << "LANDMARK " << points[0](0) << " ";
     for (int i = 0; i < points.size(); ++i)
     {
         Vector5d p = points[i];

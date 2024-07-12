@@ -106,35 +106,23 @@ MotionData IMU::MotionModel(double t, double time_offset)
     Eigen::Vector3d eulerAngles(k_roll * sin(t), k_pitch * sin(t), K * t);         // roll ~ [-0.2, 0.2], pitch ~ [-0.3, 0.3], yaw ~ [0,2pi]
     Eigen::Vector3d eulerAnglesRates(k_roll * cos(t), k_pitch * cos(t), K);        // euler angles 的导数
 
-    // Eigen::Vector3d imu_gyro(k_roll, k_pitch, k_yaw);
-    // Eigen::Matrix3d Rt =
-    // static SO3 Rwb;
-
-    Eigen::Matrix3d Rwb = euler2Rotation(eulerAngles);         // body frame to world frame
-    // Rwb = Eigen::AngleAxisd(eulerAngles[2], Eigen::Vector3d::UnitZ()) *
-    //       Eigen::AngleAxisd(eulerAngles[1], Eigen::Vector3d::UnitY()) *
-    //       Eigen::AngleAxisd(eulerAngles[0], Eigen::Vector3d::UnitX());
-    Eigen::Matrix3d Rxyz;
-    Rxyz = Eigen::AngleAxisd(eulerAngles[0], Eigen::Vector3d::UnitX()) *
-            Eigen::AngleAxisd(eulerAngles[1], Eigen::Vector3d::UnitY()) *
-            Eigen::AngleAxisd(eulerAngles[2], Eigen::Vector3d::UnitZ());
+    // Create individual rotation matrices
     double roll = eulerAngles(0);  // phi
     double pitch = eulerAngles(1); // theta
     double yaw = eulerAngles(2);   // psi
-
-    // Create individual rotation matrices
     Eigen::Matrix3d R_roll = Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()).toRotationMatrix();
     Eigen::Matrix3d R_pitch = Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()).toRotationMatrix();
     Eigen::Matrix3d R_yaw = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+
+
+    Eigen::Matrix3d Rwb = euler2Rotation(eulerAngles);         // body frame to world frame
+    // Rwb = R_yaw * R_pitch * R_roll;
 
     // Combine the rotation matrices (roll * pitch * yaw)
     Eigen::Matrix3d R = R_yaw * R_pitch * R_roll;
 
 
     Eigen::Vector3d imu_gyro = eulerRates2bodyRates(eulerAngles) * eulerAnglesRates; //  euler rates trans to body gyro
-    std::cout << "imu_gyro: " << imu_gyro.transpose() << std::endl;
-    std::cout << "imu_gyro2: " << (Rxyz * eulerAnglesRates).transpose() << std::endl;
-    std::cout << "imu_gyro3: " << (R * eulerAnglesRates).transpose() << std::endl;
 
     Eigen::Vector3d gn (0,0,-9.81);                                   //  gravity in navigation frame(ENU)   ENU (0,0,-9.81)  NED(0,0,9,81)
     Eigen::Vector3d imu_acc = Rwb.matrix().transpose() * ( ddp -  gn );  //  Rbw * Rwn * gn = gs

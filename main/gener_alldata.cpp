@@ -156,6 +156,10 @@ int main(){
         cam.timestamp = imu.timestamp;
         cam.Rwb = imu.Rwb * params.R_bc;           // cam frame in world frame
         cam.twb = imu.twb + imu.Rwb * params.t_bc; //  Tcw = Twb * Tbc ,  t = Rwb * tbc + twb
+        std::cout << std::endl
+                  << "first imu pose: " << t << std::endl
+                  << imu.Rwb << std::endl
+                  << imu.twb << std::endl;
 
         camdata.push_back(cam);
         t += 1.0 / params.cam_frequency;
@@ -175,6 +179,14 @@ int main(){
     save_Pose("cam_pose.txt",camdata);
     save_Pose_asTUM("cam_pose_tum.txt",camdata);
 
+    // print all points
+    for (int i = 0; i < points.size(); ++i) {
+        auto p = points[i];
+        std::cout << "{" << p[0] << ", " << p[1] << ", " << p[2] << "}, ";
+    }
+
+    std::cout << std::endl << "first cam pose: " << camdata[0].timestamp << std::endl << camdata[0].Rwb << std::endl << camdata[0].twb << std::endl;
+
     double t(0);
     // points obs in image
     for(int n = 0; n < camdata.size(); ++n)
@@ -183,15 +195,23 @@ int main(){
         Eigen::Matrix4d Twc = Eigen::Matrix4d::Identity();
         Twc.block(0, 0, 3, 3) = data.Rwb;
         Twc.block(0, 3, 3, 1) = data.twb;
+        Eigen::Matrix4d Tbc = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d Twb = Eigen::Matrix4d::Identity();
+        Tbc.block(0, 0, 3, 3) = params.R_bc;
+        Tbc.block(0, 3, 3, 1) = params.t_bc;
+        Twb = Twc * Tbc.inverse();
 
         // 遍历所有的特征点，看哪些特征点在视野里
-        std::vector<Vector5d, Eigen::aligned_allocator<Vector5d>> stamped_points_cam;     // ３维点在当前cam视野里
+        std::vector<Vector5d, Eigen::aligned_allocator<Vector5d>> stamped_points_cam;             // ３维点在当前cam视野里
+        std::vector<Vector5d, Eigen::aligned_allocator<Vector5d>> stamped_points_imu;             // ３维点在当前IMU系里
+        std::vector<Vector5d, Eigen::aligned_allocator<Vector5d>> stamped_points_world;           // ３维点在世界坐标系里
         std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d>> points_cam;     // ３维点在当前cam视野里
         std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > features_cam;  // 对应的２维图像坐标
         for (int i = 0; i < points.size(); ++i) {
             Eigen::Vector4d pw = points[i];          // 最后一位存着feature id
             pw[3] = 1;                               //改成齐次坐标最后一位
             Eigen::Vector4d pc1 = Twc.inverse() * pw; // T_wc.inverse() * Pw  -- > point in cam frame
+            Eigen::Vector3d p_b = params.R_bc * pc1.head<3>() + params.t_bc; // T_bc * Pw  -- > point in imu frame
 
             // if(pc1(2) < 0) continue; // z必须大于０,在摄像机坐标系前方
 
@@ -202,6 +222,11 @@ int main(){
                 points_cam.push_back(points[i]); // points in world frame
                 features_cam.push_back(obs); // points in camera frame (normalized plane)
                 stamped_points_cam.push_back(Vector5d(t, i, pc1(0), pc1(1), pc1(2)));
+                stamped_points_imu.push_back(Vector5d(t, i, p_b(0), p_b(1), p_b(2)));
+                stamped_points_world.push_back(Vector5d(t, i, pw(0), pw(1), pw(2)));
+                std::cout << "points_imu: " << p_b.transpose() << std::endl;
+                std::cout << "points_imu2: " << (Twb.inverse() * pw).transpose() << std::endl;
+                // std::cout << "points_world: " << pw.transpose() << std::endl;
             }
         }
 
@@ -209,7 +234,9 @@ int main(){
         std::stringstream filename1;
         filename1<<"keyframe/all_points_"<<n<<".txt";
         save_features(filename1.str(),points_cam,features_cam);
-        save_points_with_time("feature_points.txt", stamped_points_cam);
+        save_points_with_time("points_cam.txt", stamped_points_cam);
+        save_points_with_time("points_imu.txt", stamped_points_imu);
+        save_points_with_time("points_world.txt", stamped_points_world);
         t += 1.0/params.cam_frequency;
     }
 
