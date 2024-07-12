@@ -48,10 +48,11 @@ public:
 
     using SO3 = Sophus::SO3<double>; // 旋转变量类型
 
-    MotionData MotionModel(double t, double time_offset);
     MotionData StaticMotionModel(double t, double time_offset);
+    MotionData MotionModel(double t, double time_offset);
+    MotionData MotionModelSO3(double t, double time_offset);
 
-    void addIMUnoise(MotionData& data);
+    void addIMUnoise(MotionData &data);
     void testImu(std::string src, std::string dist);        // imu数据进行积分，用来看imu轨迹
 
 };

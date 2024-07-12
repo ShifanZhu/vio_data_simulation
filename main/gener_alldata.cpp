@@ -121,10 +121,16 @@ int main(){
         t += 1.0/params.imu_frequency;
     }
 
+    Eigen::Vector3d imu_velocity;
+    bool get_vel = false;
     // specific motion
     for (float t = params.t_start; t < params.t_end;)
     {
-        MotionData data = imuGen.MotionModel(t, params.t_static);
+        MotionData data = imuGen.MotionModelSO3(t, params.t_static);
+        if (!get_vel) {
+            imu_velocity = data.imu_velocity;
+            get_vel = true;
+        }   
         imudata.push_back(data);
 
         // add imu noise
@@ -134,7 +140,7 @@ int main(){
 
         t += 1.0/params.imu_frequency;
     }
-    imuGen.init_velocity_ = imudata[0].imu_velocity;
+    imuGen.init_velocity_ = imu_velocity; // imudata[0].imu_velocity;
     imuGen.init_twb_ = imudata.at(0).twb;
     imuGen.init_Rwb_ = imudata.at(0).Rwb;
     save_Pose("imu_pose.txt", imudata);
@@ -166,7 +172,7 @@ int main(){
     }
     for (float t = params.t_start; t<params.t_end;) {
 
-        MotionData imu = imuGen.MotionModel(t, params.t_static);   // imu body frame to world frame motion
+        MotionData imu = imuGen.MotionModelSO3(t, params.t_static);   // imu body frame to world frame motion
         MotionData cam;
 
         cam.timestamp = imu.timestamp;

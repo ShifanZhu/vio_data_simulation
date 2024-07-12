@@ -58,7 +58,7 @@ ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 rpy = []
 t = []
-for i in range(0,200,5):
+for i in range(0,1000,5):
     ax.clear()    
     ax.scatter(x, y, z,c='g')
     
@@ -101,6 +101,3 @@ for i in range(0,200,5):
     ax.legend()
     plt.show() 
     plt.pause(0.01)
-    if i >= 190:
-        plt.pause(0)
-    
