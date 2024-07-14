@@ -14,7 +14,7 @@ public:
     Param();
 
     // time
-    int imu_frequency = 1000;
+    int imu_frequency = 200;
     int cam_frequency = 30;
     double imu_timestep = 1./imu_frequency;
     double cam_timestep = 1./cam_frequency;
@@ -29,7 +29,16 @@ public:
     double gyro_noise_sigma = 0.015;    // rad/s * 1/sqrt(hz)
     double acc_noise_sigma = 0.019;      //　m/(s^2) * 1/sqrt(hz)
 
-    double pixel_noise = 1;              // 1 pixel noise
+    // // noise
+    // double gyro_bias_sigma = 1.0e-6;
+    // double acc_bias_sigma = 0.00001;
+
+    // double gyro_noise_sigma = 0.0015; // rad/s * 1/sqrt(hz)
+    // double acc_noise_sigma = 0.0019;  // 　m/(s^2) * 1/sqrt(hz)
+
+
+
+    double pixel_noise = 1; // 1 pixel noise
 
     // cam f
     double fx = 460;

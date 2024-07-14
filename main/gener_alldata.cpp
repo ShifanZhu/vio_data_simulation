@@ -126,11 +126,13 @@ int main(){
     // specific motion
     for (float t = params.t_start; t < params.t_end;)
     {
-        MotionData data = imuGen.MotionModelSO3(t, params.t_static);
+        // MotionData data = imuGen.MotionModel(t, params.t_static);
+        // MotionData data = imuGen.MotionModelSO3(t, params.t_static);
+        MotionData data = imuGen.MotionModelIntegration(t, params.imu_timestep, params.t_static);
         if (!get_vel) {
             imu_velocity = data.imu_velocity;
             get_vel = true;
-        }   
+        }
         imudata.push_back(data);
 
         // add imu noise
@@ -140,7 +142,8 @@ int main(){
 
         t += 1.0/params.imu_frequency;
     }
-    imuGen.init_velocity_ = imu_velocity; // imudata[0].imu_velocity;
+    imuGen.init_velocity_ = imudata[0].imu_velocity;
+    // imuGen.init_velocity_ = imu_velocity; // imudata[0].imu_velocity;
     imuGen.init_twb_ = imudata.at(0).twb;
     imuGen.init_Rwb_ = imudata.at(0).Rwb;
     save_Pose("imu_pose.txt", imudata);
@@ -153,6 +156,9 @@ int main(){
 
     // cam pose
     std::vector< MotionData > camdata;
+    imuGen.position_ = Eigen::Vector3d(0,0,0);
+    imuGen.velocity_ = Eigen::Vector3d(0,0,0);
+    imuGen.Rwb_ = Sophus::SO3<double>();
 
     for (float t = params.t_start; t<params.t_start + params.t_static-1e-5;) {
 
@@ -172,7 +178,9 @@ int main(){
     }
     for (float t = params.t_start; t<params.t_end;) {
 
-        MotionData imu = imuGen.MotionModelSO3(t, params.t_static);   // imu body frame to world frame motion
+        // MotionData imu = imuGen.MotionModel(t, params.t_static); // imu body frame to world frame motion
+        // MotionData imu = imuGen.MotionModelSO3(t, params.t_static); // imu body frame to world frame motion
+        MotionData imu = imuGen.MotionModelIntegration(t, 1.0/params.cam_frequency, params.t_static); // imu body frame to world frame motion
         MotionData cam;
 
         cam.timestamp = imu.timestamp;
@@ -230,8 +238,6 @@ int main(){
                 stamped_points_cam.push_back(Vector5d(t, i, pc1(0), pc1(1), pc1(2)));
                 stamped_points_imu.push_back(Vector5d(t, i, p_b(0), p_b(1), p_b(2)));
                 stamped_points_world.push_back(Vector5d(t, i, pw(0), pw(1), pw(2)));
-                std::cout << "points_imu: " << p_b.transpose() << std::endl;
-                std::cout << "points_imu2: " << (Twb.inverse() * pw).transpose() << std::endl;
                 // std::cout << "points_world: " << pw.transpose() << std::endl;
             }
         }

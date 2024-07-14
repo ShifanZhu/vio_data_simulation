@@ -177,20 +177,58 @@ MotionData IMU::MotionModelSO3(double t, double time_offset)
     return data;
 }
 
+MotionData IMU::MotionModelIntegration(double t, double dt, double time_offset)
+{
+    MotionData data;
+    // param
+    Eigen::Vector3d acc_world(0.05, 0.04, 0.03);
+    Eigen::Vector3d gyro_body(0.1, 0.3, 0.4);
+
+    Eigen::Vector3d gn(0, 0, -9.81);                                 //  gravity in navigation frame(ENU)   ENU (0,0,-9.81)  NED(0,0,9,81)
+    Eigen::Vector3d imu_acc = Rwb_.matrix().transpose() * (acc_world - gn); //  Rbw * Rwn * gn = gs
+
+    // posi = posi + vel * param_.imu_timestep + 0.5 * acc_world * param_.imu_timestep * param_.imu_timestep;
+    // vel = vel + acc_world * param_.imu_timestep;
+    // posi = posi + vel * param_.imu_timestep + 0.5 * Rwb.matrix() * imu_acc * param_.imu_timestep * param_.imu_timestep;
+    Eigen::Vector3d acc_w = Rwb_.matrix() * imu_acc + gn; // aw = Rwb * ( acc_body - acc_bias ) + gw
+    position_ += velocity_ * dt + 0.5 * acc_w * dt * dt;
+    std::cout << "data: " << position_.transpose() << " " << velocity_.transpose() << " " << acc_w.transpose() << std::endl;
+    velocity_ += acc_w * dt;
+
+    // Eigen::Vector3d acc_w = Qwb * (imupose.imu_acc) + gw; // aw = Rwb * ( acc_body - acc_bias ) + gw
+    // Pwb = Pwb + Vw * dt + 0.5 * dt * dt * acc_w;
+    // Vw = Vw + acc_w * dt;
+
+    data.imu_gyro = gyro_body;
+    data.imu_acc = imu_acc;
+    data.Rwb = Rwb_.matrix();
+    data.twb = position_;
+    std::cout << "position_1 = " << data.twb.transpose() << std::endl;
+    std::cout << "position_2 = " << data.twb.transpose() << std::endl;
+    data.imu_velocity = velocity_;
+    data.timestamp = t + time_offset;
+    Rwb_ = Rwb_ * SO3::exp(gyro_body * dt);
+
+    return data;
+}
+
 MotionData IMU::StaticMotionModel(double t, double time_offset)
 {
     MotionData data;
     // param
     double ellipse_x = 0.;
-    double ellipse_y = 20.;
-    double z = 1.;         // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
+    double ellipse_y = 0.;
+    double z = 0;         // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
+    // double ellipse_y = 20.;
+    // double z = 1.;
     double K1 = 10.;       // z轴的正弦频率是x，y的k1倍
     double K = M_PI / 10.; // 20 * K = 2pi 　　由于我们采取的是时间是20s, 系数K控制yaw正好旋转一圈，运动一周
     double K2 = K * K;
 
     // translation
     // twb:  body frame in world frame
-    Eigen::Vector3d position(ellipse_x + 5, ellipse_y + 5, z + 5);
+    // Eigen::Vector3d position(ellipse_x + 5, ellipse_y + 5, z + 5);
+    Eigen::Vector3d position(ellipse_x, ellipse_y, z);
     Eigen::Vector3d dp(0, 0, 0);            // position导数　in world frame
     Eigen::Vector3d ddp(0, 0, 0); // position二阶导数
 
