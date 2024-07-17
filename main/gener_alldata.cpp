@@ -110,7 +110,8 @@ int main(){
 
     // static motion
     for (float t = params.t_start; t<params.t_start + params.t_static-1e-5;) {
-        MotionData data = imuGen.StaticMotionModel(t, 0);
+        // MotionData data = imuGen.StaticMotionModel(t, 0);
+        MotionData data = imuGen.StaticMotionModelSinShape(t, 0);
         imudata.push_back(data);
 
         // add imu noise
@@ -128,7 +129,8 @@ int main(){
     {
         // MotionData data = imuGen.MotionModel(t, params.t_static);
         // MotionData data = imuGen.MotionModelSO3(t, params.t_static);
-        MotionData data = imuGen.MotionModelIntegration(t, params.imu_timestep, params.t_static);
+        // MotionData data = imuGen.MotionModelStraightLine(t, params.imu_timestep, params.t_static);
+        MotionData data = imuGen.MotionModelSinShape(t, params.t_static); // imu body frame to world frame motion
         if (!get_vel) {
             imu_velocity = data.imu_velocity;
             get_vel = true;
@@ -162,7 +164,8 @@ int main(){
 
     for (float t = params.t_start; t<params.t_start + params.t_static-1e-5;) {
 
-        MotionData imu = imuGen.StaticMotionModel(t, 0); // imu body frame to world frame motion
+        // MotionData imu = imuGen.StaticMotionModel(t, 0); // imu body frame to world frame motion
+        MotionData imu = imuGen.StaticMotionModelSinShape(t, 0);
         MotionData cam;
 
         cam.timestamp = imu.timestamp;
@@ -180,7 +183,8 @@ int main(){
 
         // MotionData imu = imuGen.MotionModel(t, params.t_static); // imu body frame to world frame motion
         // MotionData imu = imuGen.MotionModelSO3(t, params.t_static); // imu body frame to world frame motion
-        MotionData imu = imuGen.MotionModelIntegration(t, 1.0/params.cam_frequency, params.t_static); // imu body frame to world frame motion
+        // MotionData imu = imuGen.MotionModelStraightLine(t, 1.0/params.cam_frequency, params.t_static); // imu body frame to world frame motion
+        MotionData imu = imuGen.MotionModelSinShape(t, params.t_static); // imu body frame to world frame motion
         MotionData cam;
 
         cam.timestamp = imu.timestamp;

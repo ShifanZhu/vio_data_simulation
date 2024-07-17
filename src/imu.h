@@ -53,9 +53,11 @@ public:
     SO3 Rwb_ = SO3();
 
     MotionData StaticMotionModel(double t, double time_offset);
+    MotionData StaticMotionModelSinShape(double t, double time_offset);
     MotionData MotionModel(double t, double time_offset);
+    MotionData MotionModelSinShape(double t, double time_offset);
     MotionData MotionModelSO3(double t, double time_offset);
-    MotionData MotionModelIntegration(double t, double dt, double time_offset);
+    MotionData MotionModelStraightLine(double t, double dt, double time_offset);
 
     void addIMUnoise(MotionData &data);
     void testImu(std::string src, std::string dist);        // imu数据进行积分，用来看imu轨迹

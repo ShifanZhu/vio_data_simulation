@@ -73,6 +73,70 @@ void IMU::addIMUnoise(MotionData& data)
 
 }
 
+MotionData IMU::MotionModelSinShape(double t, double time_offset)
+{
+
+    MotionData data;
+    // param
+    double ellipse_x = 15.;
+    double ellipse_y = 20.;
+    double z = 1.;         // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
+    double K1 = 10.;       // z轴的正弦频率是x，y的k1倍
+    double K = M_PI / 10.; // 20 * K = 2pi 　　由于我们采取的是时间是20s, 系数K控制yaw正好旋转一圈，运动一周
+    double K2 = K * K;
+
+    // translation
+    // twb:  body frame in world frame
+    // Eigen::Vector3d position(ellipse_x * cos(K * t) + 5, ellipse_y * sin(K * t) + 5, z * sin(K1 * K * t) + 5);
+    // Eigen::Vector3d dp(-K * ellipse_x * sin(K * t), K * ellipse_y * cos(K * t), z * K1 * K * cos(K1 * K * t)); // position导数　in world frame
+    // Eigen::Vector3d ddp(-K2 * ellipse_x * cos(K * t), -K2 * ellipse_y * sin(K * t), -z * K1 * K1 * K2 * sin(K1 * K * t)); // position二阶导数
+    Eigen::Vector3d position(ellipse_x * cos(K * t) + 5, ellipse_y * cos(K * t) + 5, z * cos(K1 * K * t) + 5);
+    Eigen::Vector3d dp(-K * ellipse_x * sin(K * t), -K * ellipse_y * sin(K * t), -z * K1 * K * sin(K1 * K * t));          // position导数　in world frame
+    Eigen::Vector3d ddp(-K2 * ellipse_x * cos(K * t), -K2 * ellipse_y * cos(K * t), -z * K1 * K1 * K2 * cos(K1 * K * t)); // position二阶导数
+
+    // Rotation
+    double k_roll = 0.1;
+    double k_pitch = 0.2;
+    double k_yaw = 0.3;
+    // k_roll = 0;
+    // k_pitch = 0; // this will make the integration without noise more accurate.
+    // K = 0;
+    // Eigen::Vector3d eulerAngles(k_roll * cos(t), k_pitch * sin(t), K * t);          // roll ~ [-0.2, 0.2], pitch ~ [-0.3, 0.3], yaw ~ [0,2pi]
+    // Eigen::Vector3d eulerAnglesRates(-k_roll * sin(t) , k_pitch * cos(t) , K);      // euler angles 的导数
+    Eigen::Vector3d eulerAngles(k_roll * sin(t), k_pitch * sin(t), K * t);  // roll ~ [-0.2, 0.2], pitch ~ [-0.3, 0.3], yaw ~ [0,2pi]
+    Eigen::Vector3d eulerAnglesRates(k_roll * cos(t), k_pitch * cos(t), K); // euler angles 的导数
+
+    // Create individual rotation matrices
+    double roll = eulerAngles(0);  // phi
+    double pitch = eulerAngles(1); // theta
+    double yaw = eulerAngles(2);   // psi
+    Eigen::Matrix3d R_roll = Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()).toRotationMatrix();
+    Eigen::Matrix3d R_pitch = Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()).toRotationMatrix();
+    Eigen::Matrix3d R_yaw = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+
+    Eigen::Matrix3d Rwb = euler2Rotation(eulerAngles); // body frame to world frame
+    // Rwb = R_yaw * R_pitch * R_roll;
+
+    // Combine the rotation matrices (roll * pitch * yaw)
+    Eigen::Matrix3d R = R_yaw * R_pitch * R_roll;
+
+    Eigen::Vector3d imu_gyro = eulerRates2bodyRates(eulerAngles) * eulerAnglesRates; //  euler rates trans to body gyro
+
+    Eigen::Vector3d gn(0, 0, -9.81);                                 //  gravity in navigation frame(ENU)   ENU (0,0,-9.81)  NED(0,0,9,81)
+    Eigen::Vector3d imu_acc = Rwb.matrix().transpose() * (ddp - gn); //  Rbw * Rwn * gn = gs
+
+    data.imu_gyro = imu_gyro;
+    data.imu_acc = imu_acc;
+    // data.Rwb = Rwb.matrix();
+    data.Rwb = Rwb;
+    data.twb = position;
+    data.imu_velocity = dp;
+    data.timestamp = t + time_offset;
+    // Rwb = Rwb * SO3::exp(imu_gyro * param_.imu_timestep);
+
+    return data;
+}
+
 MotionData IMU::MotionModel(double t, double time_offset)
 {
 
@@ -177,7 +241,7 @@ MotionData IMU::MotionModelSO3(double t, double time_offset)
     return data;
 }
 
-MotionData IMU::MotionModelIntegration(double t, double dt, double time_offset)
+MotionData IMU::MotionModelStraightLine(double t, double dt, double time_offset)
 {
     MotionData data;
     // param
@@ -240,6 +304,53 @@ MotionData IMU::StaticMotionModel(double t, double time_offset)
     // k_pitch = 0; // this will make the integration without noise more accurate.
     // K = 0;
     Eigen::Vector3d eulerAngles(0, 0, 0); // roll ~ [-0.2, 0.2], pitch ~ [-0.3, 0.3], yaw ~ [0,2pi]
+    Eigen::Vector3d eulerAnglesRates(0, 0, 0); // euler angles 的导数
+
+    Eigen::Matrix3d Rwb = euler2Rotation(eulerAngles); // body frame to world frame
+    // Rwb = Eigen::AngleAxisd(eulerAngles[2], Eigen::Vector3d::UnitZ()) *
+    //       Eigen::AngleAxisd(eulerAngles[1], Eigen::Vector3d::UnitY()) *
+    //       Eigen::AngleAxisd(eulerAngles[0], Eigen::Vector3d::UnitX());
+    Eigen::Vector3d imu_gyro = eulerRates2bodyRates(eulerAngles) * eulerAnglesRates; //  euler rates trans to body gyro
+
+    Eigen::Vector3d gn(0, 0, -9.81);                        //  gravity in navigation frame(ENU)   ENU (0,0,-9.81)  NED(0,0,9,81)
+    Eigen::Vector3d imu_acc = Rwb.transpose() * (ddp - gn); //  Rbw * Rwn * gn = gs
+
+    data.imu_gyro = imu_gyro;
+    data.imu_acc = imu_acc;
+    data.Rwb = Rwb;
+    data.twb = position;
+    data.imu_velocity = dp;
+    data.timestamp = t + time_offset;
+    return data;
+}
+
+MotionData IMU::StaticMotionModelSinShape(double t, double time_offset)
+{
+    MotionData data;
+    // param
+    double ellipse_x = 15.;
+    double ellipse_y = 20.;
+    double z = 1; // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
+    // double ellipse_y = 20.;
+    // double z = 1.;
+    double K1 = 10.;       // z轴的正弦频率是x，y的k1倍
+    double K = M_PI / 10.; // 20 * K = 2pi 　　由于我们采取的是时间是20s, 系数K控制yaw正好旋转一圈，运动一周
+    double K2 = K * K;
+
+    // translation
+    // twb:  body frame in world frame
+    // Eigen::Vector3d position(ellipse_x + 5, ellipse_y + 5, z + 5);
+    Eigen::Vector3d position(ellipse_x + 5, ellipse_y + 5, z + 5);
+    Eigen::Vector3d dp(0, 0, 0);  // position导数　in world frame
+    Eigen::Vector3d ddp(0, 0, 0); // position二阶导数
+
+    // Rotation
+    double k_roll = 0.1;
+    double k_pitch = 0.2;
+    // k_roll = 0;
+    // k_pitch = 0; // this will make the integration without noise more accurate.
+    // K = 0;
+    Eigen::Vector3d eulerAngles(0, 0, 0);      // roll ~ [-0.2, 0.2], pitch ~ [-0.3, 0.3], yaw ~ [0,2pi]
     Eigen::Vector3d eulerAnglesRates(0, 0, 0); // euler angles 的导数
 
     Eigen::Matrix3d Rwb = euler2Rotation(eulerAngles); // body frame to world frame
