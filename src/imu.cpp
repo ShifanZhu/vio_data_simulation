@@ -385,7 +385,8 @@ void IMU::testImu(std::string src, std::string dist)
     Eigen::Vector3d Pwb = init_twb_;              // position :    from  imu measurements
     Eigen::Quaterniond Qwb(init_Rwb_);            // quaterniond:  from imu measurements
     Eigen::Vector3d Vw = init_velocity_;          // velocity  :   from imu measurements
-    Eigen::Vector3d gw(0,0,-9.81);    // ENU frame
+    std::cout << "init_velocity_ = " << init_velocity_ << std::endl;
+    Eigen::Vector3d gw(0, 0, -9.81); // ENU frame
     Eigen::Vector3d temp_a;
     Eigen::Vector3d theta;
     for (int i = 1; i < imudata.size(); ++i) {

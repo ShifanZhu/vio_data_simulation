@@ -171,10 +171,10 @@ int main(){
         cam.timestamp = imu.timestamp;
         cam.Rwb = imu.Rwb * params.R_bc;           // cam frame in world frame
         cam.twb = imu.twb + imu.Rwb * params.t_bc; //  Tcw = Twb * Tbc ,  t = Rwb * tbc + twb
-        std::cout << std::endl
-                  << "first imu pose: " << t << std::endl
-                  << imu.Rwb << std::endl
-                  << imu.twb << std::endl;
+        // std::cout << std::endl
+        //           << "first imu pose: " << t << std::endl
+        //           << imu.Rwb << std::endl
+        //           << imu.twb << std::endl;
 
         camdata.push_back(cam);
         t += 1.0 / params.cam_frequency;
