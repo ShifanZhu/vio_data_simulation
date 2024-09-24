@@ -57,9 +57,15 @@ void IMU::addIMUnoise(MotionData& data)
     Eigen::Matrix3d gyro_sqrt_cov = param_.gyro_noise_sigma * Eigen::Matrix3d::Identity();
     data.imu_gyro = data.imu_gyro + gyro_sqrt_cov * noise_gyro / sqrt( param_.imu_timestep ) + gyro_bias_;
 
+    std::cout << "imu_gyro: " << data.imu_gyro.transpose() << std::endl;
+    std::cout << "imu_nois: " << (gyro_sqrt_cov * noise_gyro / sqrt(param_.imu_timestep)).transpose() << std::endl;
+
     Eigen::Vector3d noise_acc(noise(generator_),noise(generator_),noise(generator_));
     Eigen::Matrix3d acc_sqrt_cov = param_.acc_noise_sigma * Eigen::Matrix3d::Identity();
+    std::cout << "imu_acc without noise: " << data.imu_acc.transpose() << std::endl;
     data.imu_acc = data.imu_acc + acc_sqrt_cov * noise_acc / sqrt( param_.imu_timestep ) + acc_bias_;
+    std::cout << "imu_acc: " << data.imu_acc.transpose() << std::endl;
+    std::cout << "imu_noi: " << (acc_sqrt_cov * noise_acc / sqrt(param_.imu_timestep)).transpose() << std::endl;
 
     // gyro_bias update
     Eigen::Vector3d noise_gyro_bias(noise(generator_),noise(generator_),noise(generator_));
@@ -80,8 +86,10 @@ MotionData IMU::MotionModelSinShape(double t, double time_offset)
     // param
     double ellipse_x = 15.;
     double ellipse_y = 20.;
-    double z = 1.;         // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
-    double K1 = 10.;       // z轴的正弦频率是x，y的k1倍
+    // double z = 1.;         // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
+    // double K1 = 10.;       // z轴的正弦频率是x，y的k1倍
+    double z = 5.;  // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
+    double K1 = 20.; // z轴的正弦频率是x，y的k1倍
     double K = M_PI / 10.; // 20 * K = 2pi 　　由于我们采取的是时间是20s, 系数K控制yaw正好旋转一圈，运动一周
     double K2 = K * K;
 
@@ -95,16 +103,26 @@ MotionData IMU::MotionModelSinShape(double t, double time_offset)
     Eigen::Vector3d ddp(-K2 * ellipse_x * cos(K * t), -K2 * ellipse_y * cos(K * t), -z * K1 * K1 * K2 * cos(K1 * K * t)); // position二阶导数
 
     // Rotation
-    double k_roll = 0.1;
-    double k_pitch = 0.2;
-    double k_yaw = 0.3;
+    double k_roll = 0.7;
+    double k_pitch = 1.2;
+    double k_yaw = -0.7;
+
+    // double k_roll = -1.7;
+    // double k_pitch = 2.2;
+    // double k_yaw = 2.2;
+
+    // double k_roll = -4.7;
+    // double k_pitch = -4.2;
+    // double k_yaw = 5.2;
+
     // k_roll = 0;
     // k_pitch = 0; // this will make the integration without noise more accurate.
     // K = 0;
     // Eigen::Vector3d eulerAngles(k_roll * cos(t), k_pitch * sin(t), K * t);          // roll ~ [-0.2, 0.2], pitch ~ [-0.3, 0.3], yaw ~ [0,2pi]
     // Eigen::Vector3d eulerAnglesRates(-k_roll * sin(t) , k_pitch * cos(t) , K);      // euler angles 的导数
     Eigen::Vector3d eulerAngles(k_roll * sin(t), k_pitch * sin(t), K * t);  // roll ~ [-0.2, 0.2], pitch ~ [-0.3, 0.3], yaw ~ [0,2pi]
-    Eigen::Vector3d eulerAnglesRates(k_roll * cos(t), k_pitch * cos(t), K); // euler angles 的导数
+    // Eigen::Vector3d eulerAngles(k_roll * sin(t) + 1.5, k_pitch * sin(t) - 2.2, K * t); // roll ~ [-0.2, 0.2], pitch ~ [-0.3, 0.3], yaw ~ [0,2pi]
+    Eigen::Vector3d eulerAnglesRates(k_roll * cos(t), k_pitch * cos(t), K);            // euler angles 的导数
 
     // Create individual rotation matrices
     double roll = eulerAngles(0);  // phi
@@ -115,10 +133,10 @@ MotionData IMU::MotionModelSinShape(double t, double time_offset)
     Eigen::Matrix3d R_yaw = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix();
 
     Eigen::Matrix3d Rwb = euler2Rotation(eulerAngles); // body frame to world frame
-    // Rwb = R_yaw * R_pitch * R_roll;
+    // // Rwb = R_yaw * R_pitch * R_roll;
 
-    // Combine the rotation matrices (roll * pitch * yaw)
-    Eigen::Matrix3d R = R_yaw * R_pitch * R_roll;
+    // // Combine the rotation matrices (roll * pitch * yaw)
+    // Eigen::Matrix3d R = R_yaw * R_pitch * R_roll;
 
     Eigen::Vector3d imu_gyro = eulerRates2bodyRates(eulerAngles) * eulerAnglesRates; //  euler rates trans to body gyro
 
@@ -330,10 +348,10 @@ MotionData IMU::StaticMotionModelSinShape(double t, double time_offset)
     // param
     double ellipse_x = 15.;
     double ellipse_y = 20.;
-    double z = 1; // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
+    double z = 5; // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
     // double ellipse_y = 20.;
     // double z = 1.;
-    double K1 = 10.;       // z轴的正弦频率是x，y的k1倍
+    double K1 = 20.;       // z轴的正弦频率是x，y的k1倍
     double K = M_PI / 10.; // 20 * K = 2pi 　　由于我们采取的是时间是20s, 系数K控制yaw正好旋转一圈，运动一周
     double K2 = K * K;
 
@@ -350,10 +368,12 @@ MotionData IMU::StaticMotionModelSinShape(double t, double time_offset)
     // k_roll = 0;
     // k_pitch = 0; // this will make the integration without noise more accurate.
     // K = 0;
+    // Eigen::Vector3d eulerAngles(1.5, -2.2, 0); // roll ~ [-0.2, 0.2], pitch ~ [-0.3, 0.3], yaw ~ [0,2pi]
     Eigen::Vector3d eulerAngles(0, 0, 0);      // roll ~ [-0.2, 0.2], pitch ~ [-0.3, 0.3], yaw ~ [0,2pi]
     Eigen::Vector3d eulerAnglesRates(0, 0, 0); // euler angles 的导数
 
-    Eigen::Matrix3d Rwb = euler2Rotation(eulerAngles); // body frame to world frame
+    // Eigen::Vector3d eulerAngles(k_roll * sin(t) + 0.5, k_pitch * sin(t) - 0.2, K * t); // roll ~ [-0.2, 0.2], pitch ~ [-0.3, 0.3], yaw ~ [0,2pi]
+    Eigen::Matrix3d Rwb = euler2Rotation(eulerAngles);                                 // body frame to world frame
     // Rwb = Eigen::AngleAxisd(eulerAngles[2], Eigen::Vector3d::UnitZ()) *
     //       Eigen::AngleAxisd(eulerAngles[1], Eigen::Vector3d::UnitY()) *
     //       Eigen::AngleAxisd(eulerAngles[0], Eigen::Vector3d::UnitX());

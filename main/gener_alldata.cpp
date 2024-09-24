@@ -15,7 +15,10 @@ using Lines = std::vector<Line, Eigen::aligned_allocator<Line> >;
 void CreatePointsLines(Points& points, Lines& lines)
 {
     std::ifstream f;
-    f.open("../models/house_model/house.txt");
+    // f.open("../models/house_model/house.txt");
+    // f.open("../models/house_model/two_points.txt");
+    f.open("../models/house_model/three_points.txt");
+    // f.open("../models/house_model/four_points.txt");
 
     while(!f.eof())
     {
@@ -98,6 +101,7 @@ int main(){
     Points points;
     Lines lines;
     CreatePointsLines(points, lines);
+    std::cout << "points size: " << points.size() << std::endl;
 
     // IMU model
     Param params;
@@ -150,12 +154,14 @@ int main(){
     imuGen.init_Rwb_ = imudata.at(0).Rwb;
     save_Pose("imu_pose.txt", imudata);
     save_Pose("imu_pose_noise.txt", imudata_noise);
+    save_Pose_asTUM("imu_pose_tum.txt", imudata);
     save_Pose_for_SAD("imu_data_sad.txt", imudata);
     save_Pose_for_SAD("imu_data_sad_noise.txt", imudata_noise);
 
     imuGen.testImu("imu_pose.txt", "imu_int_pose.txt"); // test the imu data, integrate the imu data to generate the imu trajecotry
     imuGen.testImu("imu_pose_noise.txt", "imu_int_pose_noise.txt");
 
+    /**********************************************************************/
     // cam pose
     std::vector< MotionData > camdata;
     imuGen.position_ = Eigen::Vector3d(0,0,0);
@@ -197,11 +203,11 @@ int main(){
     save_Pose("cam_pose.txt",camdata);
     save_Pose_asTUM("cam_pose_tum.txt",camdata);
 
-    // print all points
-    for (int i = 0; i < points.size(); ++i) {
-        auto p = points[i];
-        std::cout << "{" << p[0] << ", " << p[1] << ", " << p[2] << "}, ";
-    }
+    // // print all points
+    // for (int i = 0; i < points.size(); ++i) {
+    //     auto p = points[i];
+    //     std::cout << "{" << p[0] << ", " << p[1] << ", " << p[2] << "}, ";
+    // }
 
     std::cout << std::endl << "first cam pose: " << camdata[0].timestamp << std::endl << camdata[0].Rwb << std::endl << camdata[0].twb << std::endl;
 
@@ -222,14 +228,31 @@ int main(){
         // 遍历所有的特征点，看哪些特征点在视野里
         std::vector<Vector5d, Eigen::aligned_allocator<Vector5d>> stamped_points_cam;             // ３维点在当前cam视野里
         std::vector<Vector5d, Eigen::aligned_allocator<Vector5d>> stamped_points_imu;             // ３维点在当前IMU系里
+        std::vector<Vector5d, Eigen::aligned_allocator<Vector5d>> stamped_points_imu_noise;             // 带噪音的３维点在当前IMU系里
         std::vector<Vector5d, Eigen::aligned_allocator<Vector5d>> stamped_points_world;           // ３维点在世界坐标系里
         std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d>> points_cam;     // ３维点在当前cam视野里
         std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > features_cam;  // 对应的２维图像坐标
+
+        // Create a random number generator
+        std::random_device rd;  // Seed the generator
+        std::mt19937 gen(rd()); // Mersenne Twister engine
+
+        // Define a normal distribution with mean 0 and standard deviation 1
+        std::normal_distribution<> d(0, 0.2);
+
+
         for (int i = 0; i < points.size(); ++i) {
             Eigen::Vector4d pw = points[i];          // 最后一位存着feature id
             pw[3] = 1;                               //改成齐次坐标最后一位
             Eigen::Vector4d pc1 = Twc.inverse() * pw; // T_wc.inverse() * Pw  -- > point in cam frame
             Eigen::Vector3d p_b = params.R_bc * pc1.head<3>() + params.t_bc; // T_bc * Pw  -- > point in imu frame
+
+
+            // Create a vector to store the noise
+            Eigen::Vector3d noise;
+            noise << d(gen), d(gen), d(gen);
+            noise = 0.2 * noise;
+            std::cout << "noise: " << noise.transpose() << std::endl;
 
             // if(pc1(2) < 0) continue; // z必须大于０,在摄像机坐标系前方
 
@@ -241,6 +264,7 @@ int main(){
                 features_cam.push_back(obs); // points in camera frame (normalized plane)
                 stamped_points_cam.push_back(Vector5d(t, i, pc1(0), pc1(1), pc1(2)));
                 stamped_points_imu.push_back(Vector5d(t, i, p_b(0), p_b(1), p_b(2)));
+                stamped_points_imu_noise.push_back(Vector5d(t, i, p_b(0) + noise(0), p_b(1) + noise(1), p_b(2) + noise(2)));
                 stamped_points_world.push_back(Vector5d(t, i, pw(0), pw(1), pw(2)));
                 // std::cout << "points_world: " << pw.transpose() << std::endl;
             }
@@ -252,6 +276,7 @@ int main(){
         save_features(filename1.str(),points_cam,features_cam);
         save_points_with_time("points_cam.txt", stamped_points_cam);
         save_points_with_time("points_imu.txt", stamped_points_imu);
+        save_points_with_time("points_imu_noise.txt", stamped_points_imu_noise);
         save_points_with_time("points_world.txt", stamped_points_world);
         t += 1.0/params.cam_frequency;
     }

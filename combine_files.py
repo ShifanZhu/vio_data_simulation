@@ -22,7 +22,7 @@ def combine_files(file1, file2, output_file):
 
 # File paths
 file1 = 'imu_data_sad_noise.txt'
-file2 = 'points_imu.txt'
+file2 = 'points_imu_noise.txt'
 output_file = 'imu_points_imu_sim.txt'
 
 # Combine the files
