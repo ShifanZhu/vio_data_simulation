@@ -16,8 +16,8 @@ void CreatePointsLines(Points& points, Lines& lines)
 {
     std::ifstream f;
     // f.open("../models/house_model/house.txt");
-    // f.open("../models/house_model/two_points.txt");
-    f.open("../models/house_model/three_points.txt");
+    f.open("../models/house_model/two_points.txt");
+    // f.open("../models/house_model/three_points.txt");
     // f.open("../models/house_model/four_points.txt");
 
     while(!f.eof())

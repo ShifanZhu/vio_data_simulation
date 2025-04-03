@@ -21,9 +21,9 @@ def combine_files(file1, file2, output_file):
     write_combined_file(combined_data, output_file)
 
 # File paths
-file1 = 'imu_data_sad_noise.txt'
+file1 = 'imu_data_sad.txt'
 file2 = 'points_imu_noise.txt'
-output_file = 'imu_points_imu_sim.txt'
+output_file = 'imu_points_imu_sim_noimu_noise.txt'
 
 # Combine the files
 combine_files(file1, file2, output_file)

@@ -84,12 +84,12 @@ MotionData IMU::MotionModelSinShape(double t, double time_offset)
 
     MotionData data;
     // param
-    double ellipse_x = 15.;
-    double ellipse_y = 20.;
+    double ellipse_x = 3.;
+    double ellipse_y = 4.;
     // double z = 1.;         // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
     // double K1 = 10.;       // z轴的正弦频率是x，y的k1倍
-    double z = 5.;  // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
-    double K1 = 20.; // z轴的正弦频率是x，y的k1倍
+    double z = 1.;  // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
+    double K1 = 2.; // z轴的正弦频率是x，y的k1倍
     double K = M_PI / 10.; // 20 * K = 2pi 　　由于我们采取的是时间是20s, 系数K控制yaw正好旋转一圈，运动一周
     double K2 = K * K;
 
@@ -98,14 +98,14 @@ MotionData IMU::MotionModelSinShape(double t, double time_offset)
     // Eigen::Vector3d position(ellipse_x * cos(K * t) + 5, ellipse_y * sin(K * t) + 5, z * sin(K1 * K * t) + 5);
     // Eigen::Vector3d dp(-K * ellipse_x * sin(K * t), K * ellipse_y * cos(K * t), z * K1 * K * cos(K1 * K * t)); // position导数　in world frame
     // Eigen::Vector3d ddp(-K2 * ellipse_x * cos(K * t), -K2 * ellipse_y * sin(K * t), -z * K1 * K1 * K2 * sin(K1 * K * t)); // position二阶导数
-    Eigen::Vector3d position(ellipse_x * cos(K * t) + 5, ellipse_y * cos(K * t) + 5, z * cos(K1 * K * t) + 5);
+    Eigen::Vector3d position(ellipse_x * cos(K * t) + 1, ellipse_y * cos(K * t) + 2, z * cos(K1 * K * t) + 1);
     Eigen::Vector3d dp(-K * ellipse_x * sin(K * t), -K * ellipse_y * sin(K * t), -z * K1 * K * sin(K1 * K * t));          // position导数　in world frame
     Eigen::Vector3d ddp(-K2 * ellipse_x * cos(K * t), -K2 * ellipse_y * cos(K * t), -z * K1 * K1 * K2 * cos(K1 * K * t)); // position二阶导数
 
     // Rotation
-    double k_roll = 0.7;
-    double k_pitch = 1.2;
-    double k_yaw = -0.7;
+    double k_roll = 0.3;
+    double k_pitch = 0.4;
+    double k_yaw = -0.2;
 
     // double k_roll = -1.7;
     // double k_pitch = 2.2;
@@ -346,19 +346,19 @@ MotionData IMU::StaticMotionModelSinShape(double t, double time_offset)
 {
     MotionData data;
     // param
-    double ellipse_x = 15.;
-    double ellipse_y = 20.;
-    double z = 5; // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
+    double ellipse_x = 3.;
+    double ellipse_y = 4.;
+    double z = 1; // z轴做sin运动 Amplitude of the sinusoidal motion in the z direction.
     // double ellipse_y = 20.;
     // double z = 1.;
-    double K1 = 20.;       // z轴的正弦频率是x，y的k1倍
+    double K1 = 2.;       // z轴的正弦频率是x，y的k1倍
     double K = M_PI / 10.; // 20 * K = 2pi 　　由于我们采取的是时间是20s, 系数K控制yaw正好旋转一圈，运动一周
     double K2 = K * K;
 
     // translation
     // twb:  body frame in world frame
     // Eigen::Vector3d position(ellipse_x + 5, ellipse_y + 5, z + 5);
-    Eigen::Vector3d position(ellipse_x + 5, ellipse_y + 5, z + 5);
+    Eigen::Vector3d position(ellipse_x + 1, ellipse_y + 2, z + 1);
     Eigen::Vector3d dp(0, 0, 0);  // position导数　in world frame
     Eigen::Vector3d ddp(0, 0, 0); // position二阶导数
 

@@ -14,7 +14,7 @@ public:
     Param();
 
     // time
-    int imu_frequency = 200;
+    int imu_frequency = 500;
     int cam_frequency = 30;
     double imu_timestep = 1./imu_frequency;
     double cam_timestep = 1./cam_frequency;
